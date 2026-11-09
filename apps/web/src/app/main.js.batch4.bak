@@ -1,0 +1,92 @@
+import { initializeRouter, navigate } from './router.js';
+import { renderShell, updateActiveNavigation } from './shell.js';
+
+const pageTitles = {
+  dashboard: 'Dashboard',
+  live: 'Live Scores',
+  fixtures: 'Fixtures & Results',
+  competitions: 'Competitions',
+  teams: 'Teams',
+  players: 'Players',
+  analytics: 'Statistics & Analytics',
+  news: 'Sports News',
+  favorites: 'My Favorites',
+  notifications: 'Notifications',
+  settings: 'My Account',
+  'match-center': 'Match Center',
+  'not-found': 'Page Not Found',
+};
+
+function renderPage(route) {
+  const content = document.getElementById('app-content');
+
+  if (!content) {
+    throw new Error('Application content element is missing.');
+  }
+
+  const title = pageTitles[route.name] || 'SPORTPULSE';
+
+  document.title = `${title} | SPORTPULSE`;
+
+  if (route.name === 'not-found') {
+    content.innerHTML = `
+      <section class="page-container">
+        <h1>Page not found</h1>
+        <p>The requested SPORTPULSE page does not exist.</p>
+        <a href="/" data-link>Return to dashboard</a>
+      </section>
+    `;
+  } else {
+    content.innerHTML = `
+      <section class="page-container">
+        <h1>${title}</h1>
+        <p>This page is being prepared for modular migration.</p>
+      </section>
+    `;
+  }
+
+  updateActiveNavigation(route.pathname);
+}
+
+function handleNavigation(event) {
+  const link = event.target.closest('a[data-link]');
+
+  if (!link) {
+    return;
+  }
+
+  if (
+    event.defaultPrevented ||
+    event.button !== 0 ||
+    event.metaKey ||
+    event.ctrlKey ||
+    event.shiftKey ||
+    event.altKey ||
+    link.hasAttribute('download') ||
+    (link.target && link.target !== '_self')
+  ) {
+    return;
+  }
+
+  event.preventDefault();
+  navigate(link.getAttribute('href'));
+}
+
+export function startApplication() {
+  const root = document.getElementById('app');
+
+  if (!root) {
+    throw new Error('Application root element #app is missing.');
+  }
+
+  root.innerHTML = renderShell();
+
+  document.addEventListener('click', handleNavigation);
+
+  const stopRouter = initializeRouter(renderPage);
+
+  return () => {
+    stopRouter();
+    document.removeEventListener('click', handleNavigation);
+  };
+}

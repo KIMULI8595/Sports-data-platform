@@ -1,0 +1,109 @@
+﻿/* SPORTPULSE — Fixtures & Results */
+
+.fixtures-page .fixtures-filters {
+  margin-bottom: 22px;
+}
+
+.fixtures-page .fixtures-filter-grid {
+  display: grid;
+  grid-template-columns:
+    minmax(220px, 1.5fr)
+    minmax(160px, 1fr)
+    minmax(170px, 1fr);
+  gap: 16px;
+  align-items: end;
+}
+
+.fixtures-page .fixtures-filter-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-width: 0;
+  color: #92A0B4;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.fixtures-page [data-fixture-reset] {
+  margin-top: 18px;
+  padding: 11px 18px;
+  border: 1px solid #D6AD55;
+  border-radius: 10px;
+  background: rgba(214,173,85,.1);
+  color: #D6AD55;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.fixtures-page [data-fixture-reset]:hover {
+  background: rgba(214,173,85,.2);
+}
+
+.fixtures-page [data-fixture-results] {
+  min-width: 0;
+}
+
+.fixtures-page .fixtures-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 24px;
+  padding-top: 22px;
+  border-top: 1px solid #344052;
+}
+
+.fixtures-page .fixtures-pagination span {
+  color: #92A0B4;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.fixtures-page .fixtures-pagination button {
+  min-width: 100px;
+  padding: 10px 16px;
+  border: 1px solid #344052;
+  border-radius: 10px;
+  background: #1C2A3B;
+  color: #F5F7FA;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.fixtures-page .fixtures-pagination button:hover:not(:disabled) {
+  border-color: #D6AD55;
+  color: #D6AD55;
+}
+
+.fixtures-page .fixtures-pagination button:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+}
+
+@media (max-width: 800px) {
+  .fixtures-page .fixtures-filter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .fixtures-page .fixtures-filter-grid label:first-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 560px) {
+  .fixtures-page .fixtures-filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .fixtures-page .fixtures-filter-grid label:first-child {
+    grid-column: auto;
+  }
+
+  .fixtures-page [data-fixture-reset] {
+    width: 100%;
+  }
+}

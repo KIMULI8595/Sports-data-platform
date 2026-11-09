@@ -1,0 +1,57 @@
+import { escapeHtml } from '../../utils/html.js';
+
+function teamName(team) {
+  if (typeof team === 'string') {
+    return team;
+  }
+
+  return team?.name || 'Unknown team';
+}
+
+function formatScore(value) {
+  return Number.isInteger(value) && value >= 0
+    ? String(value)
+    : '–';
+}
+
+export function renderMatchCard(match) {
+  if (!match || typeof match !== 'object') {
+    throw new TypeError('A valid match object is required.');
+  }
+
+  const home = teamName(match.homeTeam);
+  const away = teamName(match.awayTeam);
+  const status = String(match.status || 'Unknown');
+  const homeScore = formatScore(match.homeScore);
+  const awayScore = formatScore(match.awayScore);
+
+  const matchId = match.publicId
+    ? ` data-match-id="${escapeHtml(match.publicId)}"`
+    : '';
+
+  return `
+    <article class="match-card"${matchId}>
+      <div class="match-card-header">
+        <span class="match-status">
+          ${escapeHtml(status)}
+        </span>
+      </div>
+
+      <div class="match-card-body">
+        <div class="match-team match-team-home">
+          ${escapeHtml(home)}
+        </div>
+
+        <div class="match-score" aria-label="Score">
+          <span>${homeScore}</span>
+          <span class="score-divider">:</span>
+          <span>${awayScore}</span>
+        </div>
+
+        <div class="match-team match-team-away">
+          ${escapeHtml(away)}
+        </div>
+      </div>
+    </article>
+  `;
+}

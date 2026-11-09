@@ -1,0 +1,13 @@
+{
+  "name": "sports-data-platform",
+  "private": true,
+  "scripts": {
+    "dev:api": "npm --prefix apps/api run start:dev",
+    "dev:web": "npm --prefix apps/web run dev",
+    "build": "npm --prefix apps/api run build",
+    "test": "npm --prefix apps/api test",
+    "lint": "npm --prefix apps/api run lint",
+    "db:generate": "npm --prefix apps/api exec -- prisma generate",
+    "db:seed": "npm --prefix apps/api exec -- prisma db seed"
+  }
+}

@@ -1,0 +1,313 @@
+﻿import fs from 'node:fs/promises';
+import path from 'node:path';
+import { spawn } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { withSyncLock } from './football-sync-lock.mjs';
+
+const directory = path.dirname(fileURLToPath(import.meta.url));
+const apiRoot = path.resolve(directory, '..');
+const configPath = path.join(directory, 'football-sync-config.json');
+const logPath = path.join(apiRoot, '.football-sync-log.jsonl');
+
+const once = process.argv.includes('--once');
+const allowedArgs = new Set(['--once']);
+
+if (process.argv.slice(2).some(arg => !allowedArgs.has(arg))) {
+  console.error(
+    'Usage: node scripts/football-sync-scheduler.mjs [--once]'
+  );
+  process.exit(1);
+}
+
+let stopping = false;
+let activeCycle = null;
+let timer = null;
+let shutdownPromise = null;
+
+async function log(event, details = {}) {
+  const entry = {
+    timestamp: new Date().toISOString(),
+    event,
+    ...details,
+  };
+
+  console.log(JSON.stringify(entry));
+
+  await fs.appendFile(
+    logPath,
+    JSON.stringify(entry) + '\n'
+  );
+}
+
+async function loadConfig() {
+  const config = JSON.parse(
+    await fs.readFile(configPath, 'utf8')
+  );
+
+  if (
+    typeof config.enabled !== 'boolean' ||
+    !Number.isInteger(config.intervalMinutes) ||
+    config.intervalMinutes < 5 ||
+    !Number.isInteger(config.dailyBudget) ||
+    config.dailyBudget < 1 ||
+    config.dailyBudget > 100 ||
+    !Array.isArray(config.jobs)
+  ) {
+    throw new Error('Invalid scheduler configuration');
+  }
+
+  for (const job of config.jobs) {
+    if (
+      typeof job.enabled !== 'boolean' ||
+      !Number.isInteger(job.league) ||
+      job.league <= 0 ||
+      !Number.isInteger(job.season) ||
+      job.season < 2000 ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(job.from) ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(job.to) ||
+      job.from > job.to
+    ) {
+      throw new Error(
+        `Invalid job configuration: ${job.name}`
+      );
+    }
+  }
+
+  return config;
+}
+
+function executeJob(job, budget) {
+  return new Promise((resolve, reject) => {
+    const args = [
+      '--import',
+      'tsx',
+      'scripts/football-results-sync.mjs',
+      '--league',
+      String(job.league),
+      '--season',
+      String(job.season),
+      '--from',
+      job.from,
+      '--to',
+      job.to,
+      '--budget',
+      String(budget),
+      '--apply',
+    ];
+
+    const child = spawn(process.execPath, args, {
+      cwd: apiRoot,
+      stdio: 'inherit',
+      env: process.env,
+      windowsHide: true,
+    });
+
+    child.once('error', reject);
+
+    child.once('close', (code, signal) => {
+      if (code === 0) {
+        resolve();
+      } else {
+        reject(
+          new Error(
+            `Sync exited with code ${code}, ` +
+            `signal ${signal ?? 'none'}`
+          )
+        );
+      }
+    });
+  });
+}
+
+async function runCycle(config) {
+  if (stopping) {
+    await log('cycle_skipped', {
+      reason: 'scheduler_stopping',
+    });
+    return;
+  }
+
+  let failedJobs = 0;
+
+  if (!config.enabled) {
+    await log('cycle_skipped', {
+      reason: 'scheduler_disabled',
+    });
+    return;
+  }
+
+  const jobs = config.jobs.filter(job => job.enabled);
+
+  if (!jobs.length) {
+    await log('cycle_skipped', {
+      reason: 'no_enabled_jobs',
+    });
+    return;
+  }
+
+  for (const job of jobs) {
+    if (stopping) {
+      await log('remaining_jobs_skipped', {
+        reason: 'scheduler_stopping',
+      });
+      break;
+    }
+
+    await log('job_started', {
+      name: job.name,
+      league: job.league,
+      season: job.season,
+    });
+
+    try {
+      await executeJob(job, config.dailyBudget);
+
+      await log('job_succeeded', {
+        name: job.name,
+      });
+    } catch (error) {
+      failedJobs++;
+
+      await log('job_failed', {
+        name: job.name,
+        error: error.message,
+      });
+    }
+  }
+
+  if (failedJobs > 0) {
+    throw new Error(
+      `${failedJobs} synchronization job(s) failed`
+    );
+  }
+}
+
+function startCycle(config) {
+  if (stopping) {
+    return Promise.resolve();
+  }
+
+  if (activeCycle) {
+    console.log(
+      'Scheduled cycle skipped: previous cycle still running'
+    );
+    return activeCycle;
+  }
+
+  const cycle = withSyncLock(
+    apiRoot,
+    () => runCycle(config)
+  );
+
+  activeCycle = cycle;
+
+  void cycle.finally(() => {
+    if (activeCycle === cycle) {
+      activeCycle = null;
+    }
+  }).catch(() => {});
+
+  return cycle;
+}
+
+function requestShutdown(signal) {
+  if (shutdownPromise) {
+    return shutdownPromise;
+  }
+
+  stopping = true;
+
+  if (timer) {
+    clearInterval(timer);
+    timer = null;
+  }
+
+  shutdownPromise = (async () => {
+    try {
+      await log('scheduler_stopping', {
+        signal,
+        waitingForActiveCycle: activeCycle !== null,
+      });
+
+      if (activeCycle) {
+        try {
+          await activeCycle;
+        } catch (error) {
+          process.exitCode = 1;
+
+          console.error(
+            'Active synchronization failed during shutdown:',
+            error
+          );
+        }
+      }
+
+      await log('scheduler_stopped', {
+        signal,
+      });
+    } catch (error) {
+      process.exitCode = 1;
+      console.error('Scheduler shutdown failed:', error);
+    }
+  })();
+
+  return shutdownPromise;
+}
+
+async function main() {
+  process.once('SIGINT', () => {
+    void requestShutdown('SIGINT');
+  });
+
+  process.once('SIGTERM', () => {
+    void requestShutdown('SIGTERM');
+  });
+
+  const config = await loadConfig();
+
+  await log('scheduler_started', {
+    enabled: config.enabled,
+    intervalMinutes: config.intervalMinutes,
+    jobs: config.jobs.length,
+    mode: once ? 'once' : 'continuous',
+  });
+
+  if (stopping) {
+    await requestShutdown('startup');
+    return;
+  }
+
+  if (once) {
+    await startCycle(config);
+    return;
+  }
+
+  await startCycle(config);
+
+  if (stopping) {
+    await requestShutdown('startup');
+    return;
+  }
+
+  timer = setInterval(() => {
+    if (stopping || activeCycle) {
+      return;
+    }
+
+    startCycle(config).catch(error => {
+      if (error.name === 'LockBusyError') {
+        console.log(
+          'Scheduled cycle skipped: another synchronization is running'
+        );
+        return;
+      }
+
+      console.error('Scheduler cycle failed:', error);
+    });
+  }, config.intervalMinutes * 60_000);
+}
+
+main().catch(error => {
+  console.error('Scheduler failed:', error);
+  process.exitCode = 1;
+});

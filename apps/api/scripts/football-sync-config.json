@@ -1,0 +1,15 @@
+{
+  "enabled": false,
+  "intervalMinutes": 60,
+  "dailyBudget": 20,
+  "jobs": [
+    {
+      "name": "Uganda Premier League 2024-25",
+      "league": 585,
+      "season": 2024,
+      "from": "2024-07-01",
+      "to": "2025-07-31",
+      "enabled": false
+    }
+  ]
+}

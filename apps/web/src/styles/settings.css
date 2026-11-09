@@ -1,0 +1,284 @@
+/* SPORTPULSE — Settings */
+
+.settings-page .settings-content {
+  display: grid;
+  gap: 20px;
+}
+
+.settings-page .settings-section {
+  overflow: hidden;
+  border: 1px solid var(--sp-border);
+  border-radius: 16px;
+  background: var(--sp-surface);
+}
+
+.settings-page .settings-section-heading {
+  padding: 22px 24px;
+  border-bottom: 1px solid var(--sp-border);
+  background: rgba(28, 42, 59, .4);
+}
+
+.settings-page .settings-section-heading h2 {
+  margin: 0;
+  color: var(--sp-text);
+  font-size: 18px;
+}
+
+.settings-page .settings-section-heading p {
+  margin: 7px 0 0;
+  color: var(--sp-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.settings-page .settings-section-body {
+  padding: 24px;
+}
+
+.settings-page .settings-form {
+  display: grid;
+  gap: 12px;
+}
+
+.settings-page .settings-form label {
+  color: var(--sp-text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.settings-page .settings-input-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.settings-page .settings-input-row input,
+.settings-page .settings-input-row select {
+  flex: 1 1 260px;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--sp-border);
+  border-radius: 10px;
+  background: var(--sp-bg);
+  color: var(--sp-text);
+  font: inherit;
+  font-size: 14px;
+}
+
+.settings-page .settings-input-row button,
+.settings-page .settings-secondary-button {
+  padding: 12px 18px;
+  border: 1px solid var(--sp-gold);
+  border-radius: 10px;
+  background: var(--sp-gold);
+  color: #0B111B;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.settings-page .settings-secondary-button {
+  justify-self: start;
+  border-color: var(--sp-border);
+  background: var(--sp-elevated);
+  color: var(--sp-text);
+}
+
+.settings-page .settings-help {
+  margin: 0;
+  color: var(--sp-muted);
+  font-size: 12px;
+  line-height: 1.75;
+}
+
+.settings-page .settings-option-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.settings-page .settings-option-row strong {
+  color: var(--sp-text);
+  font-size: 14px;
+}
+
+.settings-page .settings-option-row p {
+  margin: 7px 0 0;
+  color: var(--sp-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.settings-page .settings-status-pill {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border: 1px solid rgba(214,173,85,.3);
+  border-radius: 999px;
+  background: rgba(214,173,85,.08);
+  color: var(--sp-gold);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.settings-page .settings-data-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.settings-page .settings-data-grid > div {
+  display: grid;
+  gap: 8px;
+  padding: 20px;
+  border: 1px solid var(--sp-border);
+  border-radius: 12px;
+  background: var(--sp-elevated);
+}
+
+.settings-page .settings-data-grid strong {
+  color: var(--sp-gold);
+  font-size: 26px;
+}
+
+.settings-page .settings-data-grid span {
+  color: var(--sp-muted);
+  font-size: 12px;
+}
+
+.settings-page .settings-feedback {
+  position: sticky;
+  bottom: 14px;
+  z-index: 5;
+  width: fit-content;
+  max-width: 100%;
+  margin: 18px 0 0;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.settings-page .settings-feedback:not(:empty) {
+  padding: 12px 16px;
+  border: 1px solid var(--sp-border);
+  border-radius: 10px;
+  background: var(--sp-elevated);
+}
+
+.settings-page .settings-feedback[data-status="success"] {
+  color: var(--sp-success);
+}
+
+.settings-page .settings-feedback[data-status="error"] {
+  color: var(--sp-error);
+}
+
+@media (max-width: 650px) {
+  .settings-page .settings-section-heading,
+  .settings-page .settings-section-body {
+    padding: 18px;
+  }
+
+  .settings-page .settings-data-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-page .settings-option-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .settings-page .settings-input-row button {
+    width: 100%;
+  }
+}
+
+/* Batch 20 - Settings mobile repair */
+
+.settings-page,
+.settings-page .settings-content,
+.settings-page .settings-section,
+.settings-page .settings-section-body,
+.settings-page .settings-form {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.settings-page .settings-input-row input,
+.settings-page .settings-input-row select {
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+.settings-page .settings-help,
+.settings-page .settings-option-row,
+.settings-page .settings-section-heading {
+  overflow-wrap: anywhere;
+}
+
+.settings-page .settings-data-grid > div {
+  min-width: 0;
+}
+
+@media (max-width: 650px) {
+  .settings-page .settings-content {
+    gap: 14px;
+  }
+
+  .settings-page .settings-section-heading,
+  .settings-page .settings-section-body {
+    padding: 16px;
+  }
+
+  .settings-page .settings-input-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    width: 100%;
+  }
+
+  .settings-page .settings-input-row input,
+  .settings-page .settings-input-row select,
+  .settings-page .settings-input-row button {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .settings-page .settings-input-row input,
+  .settings-page .settings-input-row select {
+    min-height: 46px;
+    font-size: 16px;
+  }
+
+  .settings-page .settings-input-row button,
+  .settings-page .settings-secondary-button {
+    min-height: 44px;
+  }
+
+  .settings-page .settings-option-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .settings-page .settings-data-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .settings-page .settings-data-grid > div {
+    padding: 14px;
+  }
+
+  .settings-page .settings-feedback {
+    position: static;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-wrap: anywhere;
+  }
+}

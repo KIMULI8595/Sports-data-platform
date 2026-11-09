@@ -1,0 +1,126 @@
+const navigation = [
+  {
+    title: 'MAIN',
+    items: [
+      { label: 'Dashboard', path: '/' },
+      { label: 'Live Scores', path: '/live' },
+      { label: 'Fixtures & Results', path: '/fixtures' },
+      { label: 'Competitions', path: '/competitions' },
+    ],
+  },
+  {
+    title: 'EXPLORE',
+    items: [
+      { label: 'Teams', path: '/teams' },
+      { label: 'Players', path: '/players' },
+      { label: 'Statistics & Analytics', path: '/analytics' },
+      { label: 'Sports News', path: '/news' },
+    ],
+  },
+  {
+    title: 'PERSONAL',
+    items: [
+      { label: 'My Favorites', path: '/favorites' },
+      { label: 'Notifications', path: '/notifications' },
+      { label: 'My Account', path: '/settings' },
+    ],
+  },
+];
+
+function renderNavigation() {
+  return navigation.map(group => `
+    <div class="nav-group">
+      <h2 class="nav-group-title">${group.title}</h2>
+      <nav aria-label="${group.title}">
+        ${group.items.map(item => `
+          <a href="${item.path}" data-link class="nav-link">
+            ${item.label}
+          </a>
+        `).join('')}
+      </nav>
+    </div>
+  `).join('');
+}
+
+export function renderShell() {
+  return `
+    <div class="app-layout">
+      <aside class="app-sidebar" aria-label="Main sidebar">
+        <a href="/" data-link class="app-brand">
+          <span class="brand-mark" aria-hidden="true">SP</span>
+          <span>SPORTPULSE</span>
+        </a>
+
+        ${renderNavigation()}
+      </aside>
+
+      <div class="app-workspace">
+        <header class="app-topbar">
+          <div class="topbar-brand">SPORTPULSE</div>
+
+          <div class="topbar-actions">
+            <span id="api-status" role="status">
+              Connecting...
+            </span>
+          </div>
+        </header>
+
+        <main id="app-content" tabindex="-1">
+        </main>
+      </div>
+
+      <nav class="mobile-navigation" aria-label="Mobile navigation">
+        <a href="/" data-link>Home</a>
+        <a href="/live" data-link>Live</a>
+        <a href="/fixtures" data-link>Fixtures</a>
+        <a href="/favorites" data-link>Favorites</a>
+        <a href="/settings" data-link>More</a>
+      </nav>
+    </div>
+  `;
+}
+
+export function updateActiveNavigation(pathname) {
+  document.querySelectorAll('[data-link]').forEach(link => {
+    const isActive =
+      link.getAttribute('href') === pathname ||
+      (pathname === '/dashboard' &&
+       link.getAttribute('href') === '/');
+
+    link.classList.toggle('active', isActive);
+
+    if (isActive) {
+      link.setAttribute('aria-current', 'page');
+    } else {
+      link.removeAttribute('aria-current');
+    }
+  });
+}
+
+export async function updateApiStatus() {
+  const element = document.getElementById('api-status');
+  if (!element) return;
+
+  element.textContent = 'Checking API...';
+
+  const configured = localStorage.getItem('sportsApiUrl');
+  const baseUrl = (configured || 'http://localhost:3000')
+    .replace(/\/+$/, '');
+
+  try {
+    const response = await fetch(`${baseUrl}/matches`, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    element.textContent = 'API Connected';
+    element.style.color = '#22C55E';
+  } catch {
+    element.textContent = 'API Unavailable';
+    element.style.color = '#EF4444';
+  }
+}

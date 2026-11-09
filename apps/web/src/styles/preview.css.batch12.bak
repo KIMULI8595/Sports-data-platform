@@ -1,0 +1,39 @@
+.page-container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.page-container h1 {
+  margin-top: 0;
+  font-size: clamp(28px, 3vw, 40px);
+}
+
+.page-container p {
+  color: var(--sp-muted);
+}
+
+.loading-state {
+  padding: 48px 24px;
+}
+
+.match-card-link:focus-visible {
+  display: block;
+  outline: 2px solid var(--sp-gold-hover);
+  outline-offset: -3px;
+}
+
+.match-score-pending {
+  color: var(--sp-muted);
+  font-size: 14px;
+}
+
+.standings-table tbody tr:hover {
+  background: rgba(214, 173, 85, .05);
+}
+
+@media (max-width: 600px) {
+  .page-container {
+    padding: 12px 0;
+  }
+}

@@ -1,0 +1,182 @@
+import {
+  getNotifications,
+  getUnreadCount,
+  markNotificationRead,
+  markAllNotificationsRead,
+  removeNotification,
+} from '../services/notifications.js';
+
+import { renderNotificationCard } from
+  '../components/notifications/notification-card.js';
+
+export function renderNotificationsPage(items = [], filter = 'all') {
+  const unread = items.filter(item => !item.read).length;
+  const visible = filter === 'unread'
+    ? items.filter(item => !item.read)
+    : items;
+
+  const sorted = [...visible].sort((a, b) => {
+    const first = Date.parse(a.createdAt ?? '') || 0;
+    const second = Date.parse(b.createdAt ?? '') || 0;
+    return second - first;
+  });
+
+  let content;
+
+  if (!items.length) {
+    content = `
+      <div class="notifications-empty" role="status">
+        <div class="notifications-empty-icon" aria-hidden="true">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="40"
+            height="40"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.7"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/>
+            <path d="M10 21h4"/>
+          </svg>
+        </div>
+        <h2>You're all caught up</h2>
+        <p>
+          No notifications are available yet.
+          SPORTPULSE does not currently have a connected
+          notification feed.
+        </p>
+        <span class="notifications-pending">
+          Notification integration pending
+        </span>
+      </div>`;
+  } else if (!sorted.length) {
+    content = `
+      <div class="notifications-empty" role="status">
+        <h2>No unread notifications</h2>
+        <p>All your notifications have been read.</p>
+      </div>`;
+  } else {
+    content = `
+      <div class="notifications-list">
+        ${sorted.map(renderNotificationCard).join('')}
+      </div>`;
+  }
+
+  return `
+    <div class="dashboard-page notifications-page">
+      <header class="page-heading">
+        <p class="page-eyebrow">SPORTPULSE / PERSONAL</p>
+        <h1>Notifications</h1>
+        <p>Review available sports updates and alerts.</p>
+      </header>
+
+      <section class="dashboard-section">
+        <div class="notifications-toolbar">
+          <div class="notifications-toolbar-title">
+            <h2>Notification Center</h2>
+            <span>${unread} unread</span>
+          </div>
+
+          ${items.length
+            ? `<div class="notifications-toolbar-actions">
+                 <button type="button"
+                   data-notification-filter="all"
+                   aria-pressed="${filter === 'all'}">
+                   All
+                 </button>
+                 <button type="button"
+                   data-notification-filter="unread"
+                   aria-pressed="${filter === 'unread'}">
+                   Unread
+                 </button>
+                 <button type="button"
+                   data-notification-mark-all
+                   ${unread ? '' : 'disabled'}>
+                   Mark all read
+                 </button>
+               </div>`
+            : ''}
+        </div>
+
+        ${content}
+      </section>
+
+      <p class="notifications-disclaimer">
+        Notifications shown here are stored in this browser.
+        Live alerts, push delivery, and cross-device synchronization
+        are not enabled.
+      </p>
+    </div>
+  `;
+}
+
+export function mountNotifications(container) {
+  let active = true;
+  let filter = 'all';
+
+  function render() {
+    if (!active) return;
+
+    container.innerHTML = renderNotificationsPage(
+      getNotifications(),
+      filter
+    );
+  }
+
+  function handleClick(event) {
+    const filterButton = event.target.closest?.(
+      '[data-notification-filter]'
+    );
+
+    if (filterButton) {
+      filter = filterButton.dataset.notificationFilter;
+      render();
+      return;
+    }
+
+    const readButton = event.target.closest?.(
+      '[data-notification-read]'
+    );
+
+    if (readButton) {
+      markNotificationRead(readButton.dataset.notificationRead);
+      render();
+      return;
+    }
+
+    if (event.target.closest?.('[data-notification-mark-all]')) {
+      markAllNotificationsRead();
+      render();
+      return;
+    }
+
+    const removeButton = event.target.closest?.(
+      '[data-notification-remove]'
+    );
+
+    if (removeButton) {
+      removeNotification(removeButton.dataset.notificationRemove);
+      render();
+    }
+  }
+
+  function handleStorage(event) {
+    if (event.key === 'sportpulse:notifications:v1') {
+      render();
+    }
+  }
+
+  container.addEventListener('click', handleClick);
+  window.addEventListener('storage', handleStorage);
+
+  render();
+
+  return () => {
+    active = false;
+    container.removeEventListener('click', handleClick);
+    window.removeEventListener('storage', handleStorage);
+  };
+}

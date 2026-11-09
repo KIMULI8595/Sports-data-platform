@@ -1,0 +1,130 @@
+﻿/* SPORTPULSE — Players */
+
+.players-page .player-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px;
+  gap: 16px;
+  margin: 20px 0 24px;
+}
+
+.players-page .player-controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  color: #92A0B4;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.players-page .players-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.players-page .player-card {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  padding: 20px;
+  border: 1px solid #344052;
+  border-radius: 14px;
+  background: #151F2E;
+}
+
+.players-page .player-card-photo {
+  display: grid;
+  place-items: center;
+  flex: 0 0 64px;
+  width: 64px;
+  height: 64px;
+  overflow: hidden;
+  border-radius: 14px;
+  background: #1C2A3B;
+}
+
+.players-page .player-card-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.players-page .player-card-content {
+  min-width: 0;
+}
+
+.players-page .player-card-content h3 {
+  margin: 0 0 6px;
+  color: #F5F7FA;
+  font-size: 16px;
+}
+
+.players-page .player-card-content p {
+  margin: 0 0 8px;
+  color: #92A0B4;
+  font-size: 13px;
+}
+
+.players-page .player-position {
+  color: #D6AD55;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.players-page .player-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 350px;
+  padding: 50px 24px;
+  text-align: center;
+}
+
+.players-page .player-empty-icon {
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  margin-bottom: 24px;
+  border: 1px solid #344052;
+  border-radius: 20px;
+  background: #1C2A3B;
+  color: #D6AD55;
+  font-size: 36px;
+}
+
+.players-page .player-empty-state h2 {
+  margin: 0 0 12px;
+  color: #F5F7FA;
+  font-size: 23px;
+}
+
+.players-page .player-empty-state p {
+  max-width: 460px;
+  color: #92A0B4;
+  line-height: 1.7;
+}
+
+.players-page .player-empty-note {
+  margin-top: 10px;
+  font-size: 12px;
+}
+
+@media (max-width: 1050px) {
+  .players-page .players-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .players-page .player-controls,
+  .players-page .players-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .players-page .player-empty-state {
+    min-height: 300px;
+    padding: 35px 18px;
+  }
+}

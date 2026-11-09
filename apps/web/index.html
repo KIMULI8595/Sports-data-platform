@@ -1,0 +1,72 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Sports Data Platform</title><link rel="stylesheet" href="styles.css"></head><body><header><a class="brand" href="#home"><span class="ball">◉</span> SPORT<span class="accent">PULSE</span></a><nav><a href="#home">Overview</a><a href="#matches">Matches</a><a href="#standings">Standings</a><a href="#teams">Teams</a><a href="#players">Players</a><a href="#competitions">Leagues</a></nav><span id="api-status" class="status">Connecting…</span></header><main><section class="hero"><div><p class="eyebrow">THE GAME. IN REAL TIME.</p><h1>Every match.<br><em>Every moment.</em></h1><p>Fixtures, live match events, league tables, squads and statistics — all in one place.</p><a class="cta" href="#matches">Explore matches ↗</a></div><div class="hero-art"><div class="pitch"><div class="center-circle"></div><div class="midline"></div><div class="goal left"></div><div class="goal right"></div><div class="floating-score">LIVE <strong> 2 : 1 </strong> 78′</div></div></div></section><section id="summary" class="kpis"></section><section id="matches"><div class="section-head"><div><p class="eyebrow">MATCH CENTER</p><h2>Fixtures & results</h2></div><select id="match-filter"><option value="all">All matches</option><option value="live">Live</option><option value="scheduled">Upcoming</option><option value="finished">Finished</option></select></div><div id="match-list" class="cards"></div></section><section id="standings"><div class="section-head"><div><p class="eyebrow">COMPETITION RANKINGS</p><h2>League standings</h2></div><select id="season-select"><option value="">Select a season</option></select></div><div id="standings-list" class="panel"></div></section><section id="analytics">
+  <div class="section-head">
+    <div>
+      <p class="eyebrow">TEAM PERFORMANCE</p>
+      <h2>Season analytics</h2>
+      <p class="muted">Overall, home and away records, plus recent form.</p>
+    </div>
+  </div>
+  <div id="analytics-list" class="panel">
+    <div class="empty">Select a season to view team analytics.</div>
+  </div>
+</section>
+<section id="home-away">
+  <div class="section-head">
+    <div>
+      <p class="eyebrow">VENUE PERFORMANCE</p>
+      <h2>Home vs Away</h2>
+      <p class="muted">
+        Compare team results at home and on the road.
+      </p>
+    </div>
+
+    <select id="performance-team-select">
+      <option value="">Select a team</option>
+    </select>
+  </div>
+
+  <div id="home-away-content">
+    <div class="panel">
+      <div class="empty">
+        Select a team to view home and away performance.
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="team-comparison">
+  <div class="section-head">
+    <div>
+      <p class="eyebrow">HEAD-TO-HEAD ANALYTICS</p>
+      <h2>Team comparison</h2>
+      <p class="muted">
+        Compare two clubs using their season statistics.
+      </p>
+    </div>
+  </div>
+
+  <div class="comparison-selectors">
+    <div>
+      <label for="compare-team-a">Team A</label>
+      <select id="compare-team-a">
+        <option value="">Select first team</option>
+      </select>
+    </div>
+
+    <span class="comparison-versus">VS</span>
+
+    <div>
+      <label for="compare-team-b">Team B</label>
+      <select id="compare-team-b">
+        <option value="">Select second team</option>
+      </select>
+    </div>
+  </div>
+
+  <div id="team-comparison-content" class="panel">
+    <div class="empty">
+      Select two teams to compare their performance.
+    </div>
+  </div>
+</section>
+<div class="split"><section id="teams"><p class="eyebrow">CLUBS</p><h2>Teams</h2><div id="team-list" class="panel"></div></section><section id="players"><p class="eyebrow">TALENT</p><h2>Players</h2><div id="player-list" class="panel"></div></section></div><section id="competitions"><p class="eyebrow">THE WORLD OF FOOTBALL</p><h2>Competitions</h2><div id="competition-list" class="cards"></div></section><section id="match-detail" hidden><div class="section-head"><h2>Match details</h2><button id="close-detail">Close ✕</button></div><div id="detail-content" class="panel"></div></section></main><footer>SPORTPULSE <span>Sports Data Platform · Data displayed from your own API · No fictional live results</span></footer><script type="module" src="app.js"></script></body></html>

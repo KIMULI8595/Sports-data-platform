@@ -1,0 +1,160 @@
+.page-container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.page-container h1 {
+  margin-top: 0;
+  font-size: clamp(28px, 3vw, 40px);
+}
+
+.page-container p {
+  color: var(--sp-muted);
+}
+
+.loading-state {
+  padding: 48px 24px;
+}
+
+.match-card-link:focus-visible {
+  display: block;
+  outline: 2px solid var(--sp-gold-hover);
+  outline-offset: -3px;
+}
+
+.match-score-pending {
+  color: var(--sp-muted);
+  font-size: 14px;
+}
+
+.standings-table tbody tr:hover {
+  background: rgba(214, 173, 85, .05);
+}
+
+@media (max-width: 600px) {
+  .page-container {
+    padding: 12px 0;
+  }
+}
+/* SPORTPULSE — Shared page refinement */
+
+.dashboard-page {
+  width: 100%;
+  min-width: 0;
+}
+
+.dashboard-page .dashboard-section {
+  min-width: 0;
+}
+
+.dashboard-page .page-heading {
+  margin-bottom: 28px;
+}
+
+.dashboard-page .page-heading h1 {
+  letter-spacing: -.035em;
+}
+
+.dashboard-page .page-heading > p:last-child {
+  color: #92A0B4;
+  line-height: 1.65;
+}
+
+.dashboard-page .section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.dashboard-page .section-heading h2 {
+  margin: 0;
+}
+
+.dashboard-page .section-heading > span {
+  color: #92A0B4;
+  font-size: 13px;
+}
+
+.dashboard-page input[type="search"],
+.dashboard-page input[type="date"],
+.dashboard-page select {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px 13px;
+  border: 1px solid #344052;
+  border-radius: 10px;
+  background: #0B111B;
+  color: #F5F7FA;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.4;
+  color-scheme: dark;
+}
+
+.dashboard-page input::placeholder {
+  color: #7E8CA1;
+}
+
+.dashboard-page input:hover,
+.dashboard-page select:hover {
+  border-color: #66758A;
+}
+
+.dashboard-page input:focus,
+.dashboard-page select:focus {
+  outline: none;
+  border-color: #D6AD55;
+  box-shadow: 0 0 0 3px rgba(214,173,85,.13);
+}
+
+.dashboard-page button:focus-visible {
+  outline: 2px solid #D6AD55;
+  outline-offset: 3px;
+}
+
+.dashboard-page .standings-table-wrapper {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.dashboard-page .standings-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.dashboard-page .standings-table th,
+.dashboard-page .standings-table td {
+  padding: 13px 12px;
+  border-bottom: 1px solid #344052;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.dashboard-page .standings-table thead th {
+  color: #92A0B4;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.dashboard-page .standings-table tbody tr:last-child th,
+.dashboard-page .standings-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+@media (max-width: 640px) {
+  .dashboard-page .page-heading {
+    margin-bottom: 20px;
+  }
+
+  .dashboard-page .standings-table th,
+  .dashboard-page .standings-table td {
+    padding: 11px 9px;
+  }
+}

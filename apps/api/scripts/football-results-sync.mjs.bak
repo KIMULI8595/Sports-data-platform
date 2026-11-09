@@ -1,0 +1,442 @@
+
+/**
+ * Synchronize results for existing API-Football fixtures.
+ *
+ * Run from apps/api using npx tsx.
+ * Dry-run by default. Add --apply to update PostgreSQL.
+ *
+ * API requests are counted even in dry-run mode.
+ */
+
+import 'dotenv/config';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaClient } from '../src/generated/prisma/client.ts';
+import {
+  DAILY_LIMIT,
+  PROVIDER,
+  validDate,
+} from './football-ingest-core.mjs';
+import { reserveApiRequest } from './football-api-quota.mjs';
+
+const args = process.argv.slice(2);
+
+const usage = `
+Usage:
+  npx tsx scripts/football-results-sync.mjs \
+    --league 585 \
+    --season 2024 \
+    --from 2024-07-01 \
+    --to 2025-07-31 \
+    [--budget 20] [--apply]
+
+Without --apply, the script only previews changes.
+`;
+
+if (args.includes('--help') || args.includes('-h')) {
+  console.log(usage);
+  process.exit(0);
+}
+
+function option(key, fallback) {
+  const index = args.indexOf(key);
+
+  if (index < 0) return fallback;
+
+  if (
+    index + 1 >= args.length ||
+    args[index + 1].startsWith('--')
+  ) {
+    throw new Error(`Missing value for ${key}`);
+  }
+
+  return args[index + 1];
+}
+
+const league = Number(
+  option('--league', process.env.API_FOOTBALL_LEAGUE_ID)
+);
+
+const season = Number(
+  option('--season', process.env.API_FOOTBALL_SEASON)
+);
+
+const from = option('--from', '');
+const to = option('--to', '');
+
+const budget = Number(
+  option(
+    '--budget',
+    process.env.API_FOOTBALL_DAILY_BUDGET || '20'
+  )
+);
+
+const apply = args.includes('--apply');
+
+if (
+  !Number.isInteger(league) ||
+  league <= 0 ||
+  !Number.isInteger(season) ||
+  season < 2000 ||
+  !validDate(from) ||
+  !validDate(to) ||
+  from > to ||
+  !Number.isInteger(budget) ||
+  budget < 1 ||
+  budget > DAILY_LIMIT
+) {
+  console.error(usage);
+  process.exit(1);
+}
+
+const apiKey = process.env.API_FOOTBALL_KEY;
+const databaseUrl = process.env.DATABASE_URL;
+
+if (!apiKey || !databaseUrl) {
+  console.error(
+    'Set API_FOOTBALL_KEY and DATABASE_URL in apps/api/.env'
+  );
+  process.exit(1);
+}
+
+// Explicit status mapping. Unknown statuses are skipped.
+const statuses = new Map(
+  Object.entries({
+    NS: 'scheduled',
+    TBD: 'scheduled',
+    PST: 'postponed',
+    CANC: 'cancelled',
+    SUSP: 'suspended',
+    INT: 'suspended',
+    FT: 'finished',
+    AET: 'finished',
+    PEN: 'finished',
+    HT: 'half_time',
+    '1H': 'live',
+    '2H': 'live',
+    ET: 'live',
+    P: 'live',
+    BT: 'live',
+    LIVE: 'live',
+    ABD: 'abandoned',
+  })
+);
+
+// Historical synchronization must not interfere with
+// active live-score processing.
+const liveStatuses = new Set([
+  'live',
+  'half_time',
+]);
+
+const terminalStatuses = new Set([
+  'finished',
+  'cancelled',
+  'abandoned',
+]);
+
+const db = new PrismaClient({
+  adapter: new PrismaPg({
+    connectionString: databaseUrl,
+  }),
+});
+
+async function fetchFixtures() {
+  // Reserve one API request using the shared,
+  // concurrency-safe daily quota helper.
+  //
+  // The reservation happens before the request.
+  // Failed requests also count against the local budget.
+  const reservation = await reserveApiRequest({
+    budget,
+  });
+
+  const endpoint = new URL(
+    'https://v3.football.api-sports.io/fixtures'
+  );
+
+  for (const [key, value] of Object.entries({
+    league,
+    season,
+    from,
+    to,
+  })) {
+    endpoint.searchParams.set(
+      key,
+      String(value)
+    );
+  }
+
+  const response = await fetch(endpoint, {
+    headers: {
+      'x-apisports-key': apiKey,
+    },
+    signal: AbortSignal.timeout(20000),
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `Provider HTTP ${response.status}`
+    );
+  }
+
+  const payload = await response.json();
+
+  if (
+    payload.errors &&
+    Object.keys(payload.errors).length > 0
+  ) {
+    throw new Error(
+      'Provider API error: ' +
+      JSON.stringify(payload.errors)
+    );
+  }
+
+  const remainingHeader = response.headers.get(
+    'x-ratelimit-requests-remaining'
+  );
+
+  if (remainingHeader !== null) {
+    const remaining = Number(remainingHeader);
+
+    if (
+      Number.isFinite(remaining) &&
+      remaining <= 0
+    ) {
+      throw new Error(
+        'Provider daily quota exhausted'
+      );
+    }
+  }
+
+  if (!Array.isArray(payload.response)) {
+    throw new Error(
+      'Invalid provider response: expected fixtures array'
+    );
+  }
+
+  return {
+    fixtures: payload.response,
+    requestsUsed: reservation.used,
+  };
+}
+
+async function main() {
+  const { fixtures, requestsUsed } =
+    await fetchFixtures();
+
+  // Locate the season that was already imported.
+  const seasonMap =
+    await db.externalEntityMap.findUnique({
+      where: {
+        providerCode_entityType_externalId: {
+          providerCode: PROVIDER,
+          entityType: 'season',
+          externalId: `${league}:${season}`,
+        },
+      },
+    });
+
+  if (!seasonMap) {
+    throw new Error(
+      'Season not imported locally. Refusing to update unrelated matches.'
+    );
+  }
+
+  const fixtureIds = fixtures
+    .filter((item) => item.fixture?.id != null)
+    .map((item) => String(item.fixture.id));
+
+  // Resolve provider IDs to internal match IDs.
+  const mappings =
+    await db.externalEntityMap.findMany({
+      where: {
+        providerCode: PROVIDER,
+        entityType: 'match',
+        externalId: {
+          in: fixtureIds,
+        },
+      },
+    });
+
+  const mappedIds = new Map(
+    mappings.map((mapping) => [
+      mapping.externalId,
+      mapping.internalId,
+    ])
+  );
+
+  // Only load matches belonging to this season.
+  const matches = await db.match.findMany({
+    where: {
+      id: {
+        in: mappings.map((mapping) =>
+          mapping.internalId
+        ),
+      },
+      seasonId: seasonMap.internalId,
+    },
+  });
+
+  const byId = new Map(
+    matches.map((match) => [
+      match.id,
+      match,
+    ])
+  );
+
+  const summary = {
+    provider: PROVIDER,
+    league,
+    season,
+    from,
+    to,
+    dryRun: !apply,
+    fetched: fixtures.length,
+    eligible: 0,
+    unchanged: 0,
+    skipped: 0,
+    conflicts: 0,
+    updated: 0,
+    localRequestsUsedToday: requestsUsed,
+    examples: [],
+  };
+
+  const updates = [];
+
+  for (const item of fixtures) {
+    const externalId = String(
+      item.fixture?.id ?? ''
+    );
+
+    const internalId = mappedIds.get(
+      externalId
+    );
+
+    const match = byId.get(internalId);
+
+    const status = statuses.get(
+      item.fixture?.status?.short
+    );
+
+    if (!match || !status) {
+      summary.skipped++;
+      continue;
+    }
+
+    // This script handles historical results only.
+    // Never interfere with live matches.
+    if (
+      liveStatuses.has(match.status) ||
+      liveStatuses.has(status)
+    ) {
+      summary.conflicts++;
+      continue;
+    }
+
+    // Do not reverse an already finalized match
+    // to another lifecycle state.
+    if (
+      terminalStatuses.has(match.status) &&
+      match.status !== status
+    ) {
+      summary.conflicts++;
+      continue;
+    }
+
+    const data = {
+      status,
+    };
+
+    if (status === 'finished') {
+      const home = item.goals?.home;
+      const away = item.goals?.away;
+
+      // Do not write guessed or incomplete scores.
+      if (
+        !Number.isInteger(home) ||
+        home < 0 ||
+        !Number.isInteger(away) ||
+        away < 0
+      ) {
+        summary.skipped++;
+        continue;
+      }
+
+      data.homeScore = home;
+      data.awayScore = away;
+    }
+
+    // Compare proposed values against existing data.
+    const changed = Object.entries(data).some(
+      ([key, value]) => match[key] !== value
+    );
+
+    if (!changed) {
+      summary.unchanged++;
+      continue;
+    }
+
+    const original = {
+      status: match.status,
+      homeScore: match.homeScore,
+      awayScore: match.awayScore,
+    };
+
+    updates.push({
+      id: match.id,
+      externalId,
+      original,
+      data,
+    });
+
+    summary.eligible++;
+
+    if (summary.examples.length < 8) {
+      summary.examples.push({
+        matchId: match.id,
+        providerFixtureId: externalId,
+        before: original,
+        after: data,
+      });
+    }
+  }
+
+  if (apply) {
+    for (const change of updates) {
+      // Conditional update protects against changes
+      // made after we loaded the match.
+      const result = await db.match.updateMany({
+        where: {
+          id: change.id,
+          status: change.original.status,
+          homeScore: change.original.homeScore,
+          awayScore: change.original.awayScore,
+        },
+        data: change.data,
+      });
+
+      if (result.count === 1) {
+        summary.updated++;
+      } else {
+        summary.conflicts++;
+      }
+    }
+  }
+
+  console.log(
+    JSON.stringify(summary, null, 2)
+  );
+}
+
+try {
+  await main();
+} catch (error) {
+  console.error(
+    'Results synchronization failed:',
+    error.message
+  );
+
+  process.exitCode = 1;
+} finally {
+  await db.$disconnect();
+}

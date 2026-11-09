@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0B111B">
+  <title>SPORTPULSE | Modular Preview</title>
+  <link rel="stylesheet" href="/src/styles/layout.css">
+  <link rel="stylesheet" href="/src/styles/dashboard.css">
+  <link rel="stylesheet" href="/src/styles/match-center.css">
+  <link rel="stylesheet" href="/src/styles/preview.css">
+  <link rel="stylesheet" href="/src/styles/teams.css">
+  <link rel="stylesheet" href="/src/styles/fixtures.css">
+  <link rel="stylesheet" href="/src/styles/competitions.css">
+  <link rel="stylesheet" href="/src/styles/players.css">
+  <link rel="stylesheet" href="/src/styles/analytics.css">
+  <link rel="stylesheet" href="/src/styles/live.css">
+</head>
+<body>
+  <div id="app"></div>
+  <script type="module" src="/src/app/preview.js"></script>
+</body>
+</html>

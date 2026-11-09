@@ -1,0 +1,154 @@
+import { initializeRouter, navigate } from './router.js';
+import { renderShell, updateActiveNavigation } from './shell.js';
+import { mountDashboard } from '../pages/dashboard.js';
+import { mountMatchCenter } from '../pages/match-center.js';
+import { mountFixtures } from '../pages/fixtures.js';
+import { mountCompetitions } from '../pages/competitions.js';
+import { mountTeams } from '../pages/teams.js';
+import { mountPlayers } from '../pages/players.js';
+import { mountAnalytics } from '../pages/analytics.js';
+import { mountLive } from '../pages/live.js';
+
+const pageTitles = {
+  dashboard: 'Dashboard',
+  live: 'Live Scores',
+  fixtures: 'Fixtures & Results',
+  competitions: 'Competitions',
+  teams: 'Teams',
+  players: 'Players',
+  analytics: 'Statistics & Analytics',
+  news: 'Sports News',
+  favorites: 'My Favorites',
+  notifications: 'Notifications',
+  settings: 'My Account',
+  'match-center': 'Match Center',
+  'not-found': 'Page Not Found',
+};
+
+export function startApplication() {
+  const root = document.getElementById('app');
+
+  if (!root) {
+    throw new Error('Application root #app is missing.');
+  }
+
+  root.innerHTML = renderShell();
+
+  const content = document.getElementById('app-content');
+
+  let navigationVersion = 0;
+  let disposePage = null;
+  let stopped = false;
+
+  async function renderRoute(route) {
+    const version = ++navigationVersion;
+
+    disposePage?.();
+    disposePage = null;
+
+    const title = pageTitles[route.name] || 'SPORTPULSE';
+
+    document.title = `${title} | SPORTPULSE`;
+    updateActiveNavigation(route.pathname);
+
+    const pageContainer = document.createElement('div');
+    pageContainer.className = 'route-content';
+
+    content.replaceChildren(pageContainer);
+
+    if (typeof window.scrollTo === 'function') {
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    }
+
+    let mount = null;
+
+    if (route.name === 'dashboard') {
+      mount = () => mountDashboard(pageContainer);
+    } else if (route.name === 'match-center') {
+      mount = () => mountMatchCenter(
+        pageContainer,
+        route.params.id
+      );
+    } else if (route.name === 'fixtures') {
+      mount = () => mountFixtures(pageContainer);
+    } else if (route.name === 'competitions') {
+      mount = () => mountCompetitions(pageContainer);
+    } else if (route.name === 'teams') {
+      mount = () => mountTeams(pageContainer);
+    } else if (route.name === 'players') {
+      mount = () => mountPlayers(pageContainer);
+    } else if (route.name === 'analytics') {
+      mount = () => mountAnalytics(pageContainer);
+    } else if (route.name === 'live') {
+      mount = () => mountLive(pageContainer);
+    }
+
+    if (mount) {
+      try {
+        const cleanup = await mount();
+
+        if (stopped || version !== navigationVersion) {
+          cleanup?.();
+        } else {
+          disposePage = cleanup;
+        }
+      } catch (error) {
+        if (!stopped && version === navigationVersion) {
+          console.error('Page rendering failed:', error);
+          pageContainer.textContent = 'Unable to display this page.';
+        }
+      }
+
+      return;
+    }
+
+    const section = document.createElement('section');
+    section.className = 'page-container';
+
+    const heading = document.createElement('h1');
+    heading.textContent = title;
+
+    const message = document.createElement('p');
+    message.textContent = route.name === 'not-found'
+      ? 'This page does not exist.'
+      : 'This page is awaiting migration.';
+
+    section.append(heading, message);
+    pageContainer.replaceChildren(section);
+  }
+
+  function handleNavigation(event) {
+    const link = event.target.closest?.('a[data-link]');
+
+    if (!link) return;
+
+    if (
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey ||
+      link.hasAttribute('download') ||
+      (link.target && link.target !== '_self')
+    ) return;
+
+    event.preventDefault();
+
+    navigate(link.getAttribute('href'));
+  }
+
+  document.addEventListener('click', handleNavigation);
+
+  const stopRouter = initializeRouter(renderRoute);
+
+  return () => {
+    stopped = true;
+    navigationVersion++;
+
+    stopRouter();
+    disposePage?.();
+
+    document.removeEventListener('click', handleNavigation);
+  };
+}

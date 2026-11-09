@@ -1,0 +1,90 @@
+
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { setTimeout as sleep } from 'node:timers/promises';
+import { DAILY_LIMIT, quotaAllowed } from './football-ingest-core.mjs';
+
+export async function reserveApiRequest({
+  root = process.cwd(),
+  budget = 20,
+  lockTimeoutMs = 10000,
+} = {}) {
+  if (
+    !Number.isInteger(budget) ||
+    budget < 1 ||
+    budget > DAILY_LIMIT
+  ) {
+    throw new Error('Invalid API daily budget');
+  }
+
+  const stateFile = path.join(root, '.football-api-usage.json');
+  const lockPath = path.join(root, '.football-api-quota.lock');
+
+  const started = Date.now();
+  let locked = false;
+
+  while (!locked) {
+    try {
+      await fs.mkdir(lockPath);
+      locked = true;
+    } catch (error) {
+      if (error.code !== 'EEXIST') throw error;
+
+      if (Date.now() - started >= lockTimeoutMs) {
+        throw new Error(
+          'API quota lock is busy. Check for another running process.'
+        );
+      }
+
+      await sleep(100);
+    }
+  }
+
+  try {
+    let state;
+
+    try {
+      state = JSON.parse(await fs.readFile(stateFile, 'utf8'));
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+      state = { date: '', used: 0 };
+    }
+
+    if (
+      !state ||
+      typeof state.date !== 'string' ||
+      !Number.isInteger(state.used) ||
+      state.used < 0
+    ) {
+      throw new Error('Invalid API usage state');
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+
+    if (state.date !== today) {
+      state = { date: today, used: 0 };
+    }
+
+    if (!quotaAllowed(state.used, budget)) {
+      throw new Error(
+        `Local API budget reached: ${state.used}/${budget}`
+      );
+    }
+
+    state.used += 1;
+
+    await fs.writeFile(
+      stateFile,
+      JSON.stringify(state, null, 2)
+    );
+
+    return {
+      date: state.date,
+      used: state.used,
+      remaining: budget - state.used,
+    };
+  } finally {
+    await fs.rm(lockPath, { recursive: true, force: true });
+  }
+}
+

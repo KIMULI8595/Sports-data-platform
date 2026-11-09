@@ -1,0 +1,366 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Sport {
+  id       Int    @id @default(autoincrement())
+  publicId String @unique @default(uuid()) @map("public_id") @db.Uuid
+  name     String @unique @db.VarChar(100)
+  slug     String @unique @db.VarChar(100)
+  code     String @unique @db.VarChar(20)
+  status   String @default("active") @db.VarChar(20)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  competitions Competition[]
+  teams        Team[]
+
+  @@map("sports")
+}
+
+model Country {
+  id       Int    @id @default(autoincrement())
+  publicId String @unique @default(uuid()) @map("public_id") @db.Uuid
+
+  name          String  @unique @db.VarChar(100)
+  iso2Code      String  @unique @map("iso2_code") @db.Char(2)
+  iso3Code      String  @unique @map("iso3_code") @db.Char(3)
+  continentCode String? @map("continent_code") @db.VarChar(10)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  competitions Competition[]
+  teams        Team[]
+
+  @@map("countries")
+}
+
+model Competition {
+  id       Int    @id @default(autoincrement())
+  publicId String @unique @default(uuid()) @map("public_id") @db.Uuid
+
+  sportId   Int  @map("sport_id")
+  countryId Int? @map("country_id")
+
+  name      String  @db.VarChar(150)
+  shortName String? @map("short_name") @db.VarChar(80)
+  slug      String  @unique @db.VarChar(160)
+
+  type   String @db.VarChar(30)
+  gender String @default("male") @db.VarChar(20)
+  status String @default("active") @db.VarChar(20)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  sport   Sport    @relation(fields: [sportId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  country Country? @relation(fields: [countryId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  seasons Season[]
+
+  @@index([sportId])
+  @@index([countryId])
+  @@map("competitions")
+}
+
+model Season {
+  id       Int    @id @default(autoincrement())
+  publicId String @unique @default(uuid()) @map("public_id") @db.Uuid
+
+  competitionId Int @map("competition_id")
+
+  name      String   @db.VarChar(50)
+  startDate DateTime @map("start_date") @db.Date
+  endDate   DateTime @map("end_date") @db.Date
+
+  isCurrent Boolean @default(false) @map("is_current")
+  status    String  @default("active") @db.VarChar(20)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  competition Competition @relation(fields: [competitionId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  seasonTeams SeasonTeam[]
+  matches     Match[]
+
+  @@unique([competitionId, name])
+  @@index([competitionId])
+  @@map("seasons")
+}
+
+model Team {
+  id       Int    @id @default(autoincrement())
+  publicId String @unique @default(uuid()) @map("public_id") @db.Uuid
+
+  sportId   Int  @map("sport_id")
+  countryId Int? @map("country_id")
+
+  name      String  @db.VarChar(150)
+  shortName String? @map("short_name") @db.VarChar(80)
+  code      String? @db.VarChar(20)
+  slug      String  @unique @db.VarChar(160)
+
+  teamType String @default("club") @map("team_type") @db.VarChar(30)
+  gender   String @default("male") @db.VarChar(20)
+
+  foundedYear Int?    @map("founded_year")
+  logoUrl     String? @map("logo_url") @db.Text
+
+  status String @default("active") @db.VarChar(20)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  sport   Sport    @relation(fields: [sportId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  country Country? @relation(fields: [countryId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  seasonTeams SeasonTeam[]
+  matchEvents MatchEvent[]
+  homeMatches Match[]      @relation("HomeTeamMatches")
+  awayMatches Match[]      @relation("AwayTeamMatches")
+
+  @@index([sportId])
+  @@index([countryId])
+  memberships PlayerTeamMembership[]
+  lineups MatchLineupPlayer[]
+  matchStatistics TeamMatchStatistic[]
+  @@map("teams")
+}
+
+model SeasonTeam {
+  id Int @id @default(autoincrement())
+
+  seasonId Int @map("season_id")
+  teamId   Int @map("team_id")
+
+  groupName String? @map("group_name") @db.VarChar(50)
+  seed      Int?
+  status    String  @default("active") @db.VarChar(20)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  season Season @relation(fields: [seasonId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([seasonId, teamId])
+  @@index([teamId])
+  @@map("season_teams")
+}
+
+model Match {
+  id       Int    @id @default(autoincrement())
+  publicId String @unique @default(uuid()) @map("public_id") @db.Uuid
+
+  seasonId   Int @map("season_id")
+  homeTeamId Int @map("home_team_id")
+  awayTeamId Int @map("away_team_id")
+
+  scheduledStart DateTime  @map("scheduled_start") @db.Timestamptz(3)
+  actualStart    DateTime? @map("actual_start") @db.Timestamptz(3)
+  actualEnd      DateTime? @map("actual_end") @db.Timestamptz(3)
+
+  status String  @default("scheduled") @db.VarChar(30)
+  period String? @db.VarChar(30)
+
+  clockSeconds Int @default(0) @map("clock_seconds")
+
+  homeScore Int @default(0) @map("home_score")
+  awayScore Int @default(0) @map("away_score")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  season Season @relation(fields: [seasonId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  homeTeam Team @relation("HomeTeamMatches", fields: [homeTeamId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  awayTeam Team @relation("AwayTeamMatches", fields: [awayTeamId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  events MatchEvent[]
+  lineups MatchLineupPlayer[]
+  teamStatistics TeamMatchStatistic[]
+  playerStatistics PlayerMatchStatistic[]
+
+  @@index([seasonId])
+  @@index([homeTeamId])
+  @@index([awayTeamId])
+  @@index([scheduledStart])
+  @@map("matches")
+}
+
+model EventType {
+  id       Int    @id @default(autoincrement())
+  publicId String @unique @default(uuid()) @map("public_id") @db.Uuid
+
+  code        String  @unique @db.VarChar(50)
+  category    String  @db.VarChar(50)
+  description String? @db.VarChar(255)
+
+  status String @default("active") @db.VarChar(20)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  matchEvents MatchEvent[]
+
+  @@map("event_types")
+}
+
+model MatchEvent {
+  id       Int    @id @default(autoincrement())
+  publicId String @unique @default(uuid()) @map("public_id") @db.Uuid
+
+  matchId     Int  @map("match_id")
+  eventTypeId Int  @map("event_type_id")
+  teamId      Int? @map("team_id")
+
+  providerId      Int?    @map("provider_id")
+  providerEventId String? @map("provider_event_id") @db.VarChar(150)
+
+  provider DataProvider? @relation(fields: [providerId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  relatedEventId Int? @map("related_event_id")
+
+  sequenceNumber Int @map("sequence_number")
+
+  status String @default("confirmed") @db.VarChar(30)
+
+  period String @db.VarChar(30)
+
+  minute Int?
+  second Int?
+
+  metadata Json? @db.JsonB
+
+  occurredAt  DateTime  @map("occurred_at") @db.Timestamptz(3)
+  receivedAt  DateTime  @default(now()) @map("received_at") @db.Timestamptz(3)
+  processedAt DateTime? @map("processed_at") @db.Timestamptz(3)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  match     Match     @relation(fields: [matchId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  eventType EventType @relation(fields: [eventTypeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  team      Team?     @relation(fields: [teamId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  relatedEvent MatchEvent?  @relation("RelatedMatchEvents", fields: [relatedEventId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  relatedBy    MatchEvent[] @relation("RelatedMatchEvents")
+
+  @@unique([matchId, sequenceNumber])
+  @@unique([providerId, providerEventId])
+  @@index([matchId])
+  @@index([eventTypeId])
+  @@index([teamId])
+  @@index([relatedEventId])
+  @@index([matchId, occurredAt])
+  @@index([providerId])
+  @@map("match_events")
+}
+
+model DataProvider {
+  id       Int    @id @default(autoincrement())
+  publicId String @unique @default(uuid()) @map("public_id") @db.Uuid
+
+  name String @db.VarChar(100)
+  code String @unique @db.VarChar(50)
+
+  status String @default("active") @db.VarChar(20)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  matchEvents MatchEvent[]
+
+  @@map("data_providers")
+}
+
+model Player {
+  id Int @id @default(autoincrement())
+  publicId String @unique @default(uuid()) @map("public_id") @db.Uuid
+  name String @db.VarChar(160)
+  nationality String? @db.VarChar(80)
+  birthDate DateTime? @map("birth_date") @db.Date
+  position String? @db.VarChar(40)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  memberships PlayerTeamMembership[]
+  lineups MatchLineupPlayer[]
+  statistics PlayerMatchStatistic[]
+  @@map("players")
+}
+model PlayerTeamMembership {
+  id Int @id @default(autoincrement())
+  playerId Int @map("player_id")
+  teamId Int @map("team_id")
+  startDate DateTime @map("start_date") @db.Date
+  endDate DateTime? @map("end_date") @db.Date
+  shirtNumber Int? @map("shirt_number")
+  player Player @relation(fields: [playerId], references: [id], onDelete: Restrict)
+  team Team @relation(fields: [teamId], references: [id], onDelete: Restrict)
+  @@index([playerId, startDate])
+  @@index([teamId])
+  @@map("player_team_memberships")
+}
+model MatchLineupPlayer {
+  id Int @id @default(autoincrement())
+  matchId Int @map("match_id")
+  teamId Int @map("team_id")
+  playerId Int @map("player_id")
+  starter Boolean @default(false)
+  captain Boolean @default(false)
+  position String? @db.VarChar(40)
+  player Player @relation(fields: [playerId], references: [id], onDelete: Restrict)
+  match Match @relation(fields: [matchId], references: [id], onDelete: Restrict)
+  team Team @relation(fields: [teamId], references: [id], onDelete: Restrict)
+  @@unique([matchId, playerId])
+  @@index([teamId])
+  @@map("match_lineup_players")
+}
+model TeamMatchStatistic {
+  id Int @id @default(autoincrement())
+  matchId Int @map("match_id")
+  teamId Int @map("team_id")
+  metric String @db.VarChar(60)
+  value Float
+  match Match @relation(fields: [matchId], references: [id], onDelete: Restrict)
+  team Team @relation(fields: [teamId], references: [id], onDelete: Restrict)
+  @@unique([matchId, teamId, metric])
+  @@map("team_match_statistics")
+}
+model PlayerMatchStatistic {
+  id Int @id @default(autoincrement())
+  matchId Int @map("match_id")
+  playerId Int @map("player_id")
+  metric String @db.VarChar(60)
+  value Float
+  match Match @relation(fields: [matchId], references: [id], onDelete: Restrict)
+  player Player @relation(fields: [playerId], references: [id], onDelete: Restrict)
+  @@unique([matchId, playerId, metric])
+  @@map("player_match_statistics")
+}
+
+
+// Stable provider identifiers; never infer identity from display names.
+model ExternalEntityMap {
+  id Int @id @default(autoincrement())
+  providerCode String @map("provider_code") @db.VarChar(50)
+  entityType String @map("entity_type") @db.VarChar(30)
+  externalId String @map("external_id") @db.VarChar(100)
+  internalId Int @map("internal_id")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  @@unique([providerCode, entityType, externalId])
+  @@index([entityType, internalId])
+  @@map("external_entity_maps")
+}

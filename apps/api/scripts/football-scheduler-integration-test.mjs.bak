@@ -1,0 +1,164 @@
+﻿import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { spawn } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { setTimeout as sleep } from 'node:timers/promises';
+
+const scripts = path.dirname(fileURLToPath(import.meta.url));
+const root = await fs.mkdtemp(
+  path.join(os.tmpdir(), 'football-scheduler-integration-')
+);
+const testScripts = path.join(root, 'scripts');
+
+let scheduler = null;
+
+try {
+  await fs.mkdir(testScripts);
+
+  await fs.copyFile(
+    path.join(scripts, 'football-sync-lock.mjs'),
+    path.join(testScripts, 'football-sync-lock.mjs')
+  );
+
+  let source = await fs.readFile(
+    path.join(scripts, 'football-sync-scheduler.mjs'),
+    'utf8'
+  );
+
+  const original = `const child = spawn(process.execPath, args, {`;
+
+  assert.ok(
+    source.includes(original),
+    'Expected scheduler spawn statement not found'
+  );
+
+  source = source.replace(
+    original,
+    `const child = spawn(
+      process.execPath,
+      ['-e', 'setTimeout(() => process.exit(0), 6000)'],
+      {`
+  );
+
+  await fs.writeFile(
+    path.join(testScripts, 'football-sync-scheduler.mjs'),
+    source
+  );
+
+  await fs.writeFile(
+    path.join(testScripts, 'football-sync-config.json'),
+    JSON.stringify({
+      enabled: true,
+      intervalMinutes: 60,
+      dailyBudget: 3,
+      jobs: [{
+        name: 'SIMULATED TEST ONLY',
+        league: 1,
+        season: 2024,
+        from: '2024-01-01',
+        to: '2024-12-31',
+        enabled: true,
+      }],
+    }, null, 2)
+  );
+
+  const output = [];
+
+  scheduler = spawn(
+    process.execPath,
+    [path.join(testScripts, 'football-sync-scheduler.mjs')],
+    {
+      cwd: root,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      windowsHide: true,
+    }
+  );
+
+  scheduler.stdout.on('data', data => {
+    output.push(data.toString());
+    process.stdout.write(data);
+  });
+
+  scheduler.stderr.on('data', data => {
+    output.push(data.toString());
+    process.stderr.write(data);
+  });
+
+  let started = false;
+
+  for (let attempt = 0; attempt < 100; attempt++) {
+    if (output.join('').includes('"event":"job_started"')) {
+      started = true;
+      break;
+    }
+
+    if (scheduler.exitCode !== null) break;
+
+    await sleep(100);
+  }
+
+  assert.equal(started, true, 'Simulated job did not start');
+
+  const lockPath = path.join(root, '.football-sync.lock');
+
+  assert.equal(
+    await fs.stat(lockPath).then(() => true, () => false),
+    true,
+    'Synchronization lock should exist'
+  );
+
+  console.log('Simulated job started with lock active');
+
+  const shutdownStarted = Date.now();
+
+  scheduler.kill('SIGINT');
+
+  await new Promise((resolve, reject) => {
+    scheduler.once('close', resolve);
+    scheduler.once('error', reject);
+  });
+
+  const elapsed = Date.now() - shutdownStarted;
+  const logs = output.join('');
+
+  assert.ok(
+    logs.includes('"event":"scheduler_stopping"'),
+    'Shutdown-start event missing'
+  );
+
+  assert.ok(
+    logs.includes('"event":"scheduler_stopped"'),
+    'Shutdown-complete event missing'
+  );
+
+  assert.ok(
+    logs.includes('"event":"job_succeeded"'),
+    'Simulated child did not complete'
+  );
+
+  assert.ok(
+    elapsed >= 4500,
+    `Scheduler exited too early: ${elapsed}ms`
+  );
+
+  assert.equal(
+    await fs.stat(lockPath).then(() => true, () => false),
+    false,
+    'Synchronization lock was not released'
+  );
+
+  console.log('Shutdown waited for simulated child');
+  console.log('Synchronization lock released');
+  console.log('SCHEDULER INTEGRATION TEST PASSED');
+} finally {
+  if (scheduler && scheduler.exitCode === null) {
+    scheduler.kill();
+  }
+
+  await fs.rm(root, {
+    recursive: true,
+    force: true,
+  });
+}

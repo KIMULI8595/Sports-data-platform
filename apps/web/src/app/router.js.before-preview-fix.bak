@@ -1,0 +1,93 @@
+const routes = new Map([
+  ['/', 'dashboard'],
+  ['/dashboard', 'dashboard'],
+  ['/live', 'live'],
+  ['/fixtures', 'fixtures'],
+  ['/competitions', 'competitions'],
+  ['/teams', 'teams'],
+  ['/players', 'players'],
+  ['/analytics', 'analytics'],
+  ['/news', 'news'],
+  ['/favorites', 'favorites'],
+  ['/notifications', 'notifications'],
+  ['/settings', 'settings'],
+]);
+
+export function resolveRoute(pathname = window.location.pathname) {
+  const normalizedPath =
+    pathname.length > 1
+      ? pathname.replace(/\/+$/, '')
+      : pathname;
+
+  if (routes.has(normalizedPath)) {
+    return {
+      name: routes.get(normalizedPath),
+      pathname: normalizedPath,
+      params: {},
+    };
+  }
+
+  const matchRoute = normalizedPath.match(
+    /^\/matches\/([^/]+)$/
+  );
+
+  if (matchRoute) {
+    return {
+      name: 'match-center',
+      pathname: normalizedPath,
+      params: {
+        id: decodeURIComponent(matchRoute[1]),
+      },
+    };
+  }
+
+  return {
+    name: 'not-found',
+    pathname: normalizedPath,
+    params: {},
+  };
+}
+
+export function navigate(pathname) {
+  const target = new URL(pathname, window.location.origin);
+
+  if (target.origin !== window.location.origin) {
+    throw new Error('External navigation is not supported.');
+  }
+
+  if (target.pathname !== window.location.pathname) {
+    window.history.pushState({}, '', target.pathname);
+  }
+
+  window.dispatchEvent(new Event('sportpulse:navigate'));
+}
+
+export function initializeRouter(onRouteChange) {
+  if (typeof onRouteChange !== 'function') {
+    throw new TypeError('A route change callback is required.');
+  }
+
+  const handleRouteChange = () => {
+    onRouteChange(resolveRoute());
+  };
+
+  window.addEventListener('popstate', handleRouteChange);
+  window.addEventListener(
+    'sportpulse:navigate',
+    handleRouteChange
+  );
+
+  handleRouteChange();
+
+  return () => {
+    window.removeEventListener(
+      'popstate',
+      handleRouteChange
+    );
+
+    window.removeEventListener(
+      'sportpulse:navigate',
+      handleRouteChange
+    );
+  };
+}
